@@ -1,106 +1,93 @@
-// ============================================================
-// form.js – Modul 3: validasi formulir & pesan WhatsApp
-// ============================================================
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("form-pesan");
+  const hasil = document.getElementById("hasil-pesan");
+  const ringkasan = document.getElementById("ringkasan");
+  const tautanWA = document.getElementById("tautan-wa");
 
-const form = document.querySelector("#form-pesan");
-const hasilPesan = document.querySelector("#hasil-pesan");
-const ringkasan = document.querySelector("#ringkasan");
-const tautanWa = document.querySelector("#tautan-wa");
+  // Nomor WhatsApp penjual (ganti dengan nomor yang benar, format 62...)
+  const NOMOR_PENJUAL = "6281234567890";
 
-// Nomor WhatsApp toko (FIKTIF, hanya untuk latihan)
-const NOMOR_TOKO = "628123456789";
-
-// 1. Aturan validasi: fungsi pemeriksa + pesan kesalahan untuk tiap kolom
-const aturan = {
-  nama: {
-    cek: (nilai) => nilai.trim().length >= 3,
-    pesan: "Nama wajib diisi, minimal 3 huruf.",
-  },
-  wa: {
-    cek: (nilai) => /^08\d{8,11}$/.test(nilai.trim()),
-    pesan: "Nomor WhatsApp diawali 08 dan terdiri atas 10–13 digit angka.",
-  },
-  email: {
-    // email boleh kosong; jika diisi, formatnya harus benar
-    cek: (nilai) => nilai.trim() === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nilai.trim()),
-    pesan: "Format surel belum benar, contoh: nama@domain.com.",
-  },
-  produk: {
-    cek: (nilai) => nilai !== "",
-    pesan: "Silakan pilih produk.",
-  },
-  jumlah: {
-    cek: (nilai) => Number.isInteger(Number(nilai)) && Number(nilai) >= 1 && Number(nilai) <= 50,
-    pesan: "Jumlah harus bilangan bulat 1 sampai 50.",
-  },
-};
-
-// 2. Menampilkan (atau menghapus) pesan kesalahan sebuah kolom
-function tampilkanError(input, pesan) {
-  const wadahError = document.querySelector(`#error-${input.id}`);
-  wadahError.textContent = pesan;
-  input.setAttribute("aria-invalid", pesan !== "" ? "true" : "false");
-}
-
-// 3. Memeriksa satu kolom; hasilnya true (valid) atau false
-function validasiKolom(input) {
-  if (input.type === "checkbox") {
-    const dicentang = input.checked;
-    tampilkanError(input, dicentang ? "" : "Centang persetujuan terlebih dahulu.");
-    return dicentang;
+  function tampilError(id, pesan) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = pesan;
   }
 
-  const aturanKolom = aturan[input.name];
-  const valid = aturanKolom.cek(input.value);
-  tampilkanError(input, valid ? "" : aturanKolom.pesan);
-  return valid;
-}
-// 4. Daftar kolom yang perlu diperiksa
-const kolomDiperiksa = ["nama", "wa", "email", "produk", "jumlah", "setuju"].map(
-  (nama) => form.elements[nama]
-);
-
-// 5. Kolom yang sudah ditandai salah diperiksa ulang setiap kali isinya berubah,
-//    sehingga pesan kesalahan langsung hilang begitu pengguna memperbaikinya
-kolomDiperiksa.forEach((input) => {
-  input.addEventListener("input", () => {
-    if (input.getAttribute("aria-invalid") === "true") {
-      validasiKolom(input);
-    }
-  });
-});
-
-// 6. Periksa semua kolom ketika formulir dikirim
-form.addEventListener("submit", (event) => {
-  event.preventDefault(); // cegah halaman dimuat ulang
-
-  let kolomSalahPertama = null;
-  kolomDiperiksa.forEach((input) => {
-    const valid = validasiKolom(input);
-    if (!valid && kolomSalahPertama === null) {
-      kolomSalahPertama = input;
-    }
-  });
-
-  if (kolomSalahPertama !== null) {
-    hasilPesan.hidden = true;
-    kolomSalahPertama.focus(); // arahkan pengguna ke kesalahan pertama
-    return;
+  function bersihkanError() {
+    document.querySelectorAll(".pesan-error").forEach(function (el) {
+      el.textContent = "";
+    });
   }
 
-  // 7. Semua valid: susun pesan WhatsApp dari data formulir
-  const data = new FormData(form);
-  const pesan = [
-    "Assalamu'alaikum, saya ingin memesan:",
-    `Nama: ${data.get("nama").trim()}`,
-    `Produk: ${data.get("produk")}`,
-    `Jumlah: ${data.get("jumlah")}`,
-    `Pengambilan: ${data.get("pengambilan")}`,
-    `Catatan: ${data.get("catatan").trim() || "-"}`,
-  ].join("\n");
+  form.addEventListener("submit", function (event) {
+    event.preventDefault(); // cegah halaman reload
+    bersihkanError();
 
-  ringkasan.textContent = pesan; // textContent aman dari XSS
-  tautanWa.href = `https://wa.me/${NOMOR_TOKO}?text=${encodeURIComponent(pesan)}`;
-  hasilPesan.hidden = false;
-  hasilPesan.scrollIntoView({ behavior: "smooth" });
+    const nama = form.nama.value.trim();
+    const wa = form.wa.value.trim();
+    const email = form.email.value.trim();
+    const produk = form.produk.value;
+    const jumlah = parseInt(form.jumlah.value, 10);
+    const pengambilan = form.pengambilan.value;
+    const catatan = form.catatan.value.trim();
+    const setuju = form.setuju.checked;
+
+    let valid = true;
+
+    if (nama.length < 3) {
+      tampilError("error-nama", "Nama minimal 3 karakter.");
+      valid = false;
+    }
+
+    if (!/^08[0-9]{8,11}$/.test(wa)) {
+      tampilError("error-wa", "Nomor WhatsApp harus diawali 08 dan 10–13 digit.");
+      valid = false;
+    }
+
+    if (email !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      tampilError("error-email", "Format surel tidak valid.");
+      valid = false;
+    }
+
+    if (produk === "") {
+      tampilError("error-produk", "Silakan pilih produk.");
+      valid = false;
+    }
+
+    if (isNaN(jumlah) || jumlah < 1 || jumlah > 50) {
+      tampilError("error-jumlah", "Jumlah harus antara 1 sampai 50.");
+      valid = false;
+    }
+
+    if (!setuju) {
+      tampilError("error-setuju", "Anda harus menyetujui sebelum mengirim.");
+      valid = false;
+    }
+
+    if (!valid) {
+      hasil.hidden = true;
+      return;
+    }
+
+    // Susun teks ringkasan
+    const teks =
+      "Nama        : " + nama + "\n" +
+      "WhatsApp    : " + wa + "\n" +
+      "Surel       : " + (email || "-") + "\n" +
+      "Produk      : " + produk + "\n" +
+      "Jumlah      : " + jumlah + "\n" +
+      "Pengambilan : " + pengambilan + "\n" +
+      "Catatan     : " + (catatan || "-");
+
+    ringkasan.textContent = teks;
+
+    // Pesan untuk WhatsApp
+    const pesanWA =
+      "Halo Sasirangan Banua, saya ingin memesan:\n\n" + teks;
+    tautanWA.href =
+      "https://wa.me/" + NOMOR_PENJUAL + "?text=" + encodeURIComponent(pesanWA);
+
+    // Tampilkan kotak ringkasan
+    hasil.hidden = false;
+    hasil.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 });
